@@ -9,3 +9,9 @@ tools/backups/
 # Die .example-Dateien dienen als Vorlage
 config.php
 config_adapter.php
+
+# Keine Sicherungen, Archive und Logs einchecken (enthielten Zugangsdaten)
+*.zip
+*backup*.sql
+*.log
+logs/
