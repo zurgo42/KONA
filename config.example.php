@@ -54,7 +54,7 @@ if (defined('MYSQL_HOST')) {
         define('DB_HOST', 'localhost');
         define('DB_USER', 'root');
         define('DB_PASS', '');  // XAMPP Standard: kein Passwort
-        define('DB_NAME', 'k126904_div');  // Lokale Datenbank
+        define('DB_NAME', 'k126904_go');  // Lokale Datenbank (gemeinsame GO-Datenbank)
     } else {
         // Produktivserver
         define('DB_HOST', '...');
