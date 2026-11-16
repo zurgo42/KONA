@@ -792,11 +792,13 @@ if ($user['aktiv'] >= 19) {
         <?php
         $v_limit = $v_limit_display;
         $monatslimit = (float)($bart_config['bart_verfuegung_monatslimit'] ?? 2000);
-        $summe_mit_aktuell = $monatssumme + ($antrag['fin'] ?? 0);
-        if ($monatssumme > 0 && ($antrag['fin'] ?? 0) < $v_limit):
+        // fin kann (z. B. bei duplizierten oder importierten Anträgen) leer oder nicht numerisch sein
+        $fin_aktuell = is_numeric($antrag['fin'] ?? null) ? (float)$antrag['fin'] : 0.0;
+        $summe_mit_aktuell = $monatssumme + $fin_aktuell;
+        if ($monatssumme > 0 && $fin_aktuell < $v_limit):
         ?>
             <div class="alert alert-<?= $summe_mit_aktuell > $monatslimit ? 'error' : 'warning' ?>">
-                <strong>Monatssumme Verfügungen:</strong> <?= number_format($monatssumme, 2, ',', '.') ?>€ + aktuell <?= number_format($antrag['fin'] ?? 0, 2, ',', '.') ?>€ = <?= number_format($summe_mit_aktuell, 2, ',', '.') ?>€
+                <strong>Monatssumme Verfügungen:</strong> <?= number_format($monatssumme, 2, ',', '.') ?>€ + aktuell <?= number_format($fin_aktuell, 2, ',', '.') ?>€ = <?= number_format($summe_mit_aktuell, 2, ',', '.') ?>€
                 <?php if ($summe_mit_aktuell > $monatslimit): ?>
                     <br><strong style="color: #d32f2f;">⚠️ Monatslimit überschritten! Ein Ressortbeschluss ist erforderlich.</strong>
                 <?php else: ?>
@@ -1150,7 +1152,7 @@ if ($user['aktiv'] >= 19) {
                 <div class="form-row full">
                     <div class="form-group">
                         <label for="fin">Betrag (volle Euro)</label>
-                        <input type="number" id="fin" name="fin" step="1" min="0" value="<?= htmlspecialchars($antrag['fin'] ?? '0') ?>" style="max-width: 150px;">
+                        <input type="number" id="fin" name="fin" step="1" min="0" value="<?= htmlspecialchars(is_numeric($antrag['fin'] ?? null) ? (string)$antrag['fin'] : '0') ?>" style="max-width: 150px;">
                         <?php
                         // Betragsgrenzen aus Config
                         $v_limit = $bart_config['bart_V_betrag_limit'] ?? 600;
