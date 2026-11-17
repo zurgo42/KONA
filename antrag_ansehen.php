@@ -229,6 +229,11 @@ $second_entity = $second_entity_stmt ? ($second_entity_stmt->fetchColumn() ?: ''
 </head>
 <body>
     <div class="container" style="max-width: 1400px;">
+        <?php if (($_GET['msg'] ?? '') === 'finalized'): ?>
+            <div style="padding: 10px 14px; margin-bottom: 12px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 4px; color: #155724;">
+                ✅ Der Antrag wurde verbindlich eingestellt und steht jetzt zur Abstimmung (<a href="abstimmungen.php?antrnr=<?= urlencode($antrnr) ?>">zur Abstimmung</a>).
+            </div>
+        <?php endif; ?>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <h1 style="margin: 0; font-size: 20px;">Antrag <?= htmlspecialchars($antrnr) ?></h1>
             <div style="display: flex; gap: 8px;">

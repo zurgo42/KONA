@@ -308,7 +308,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Verfügung: direkt beschlossen und im Beschlussbuch - keine Abstimmung
                     header("Location: antrag_ansehen.php?antrnr=" . urlencode($neue_nr));
                 } else {
-                    header("Location: antrag_bearbeiten.php?antrnr=" . urlencode($neue_nr) . "&msg=finalized");
+                    // In Abstimmung: nur noch Admins dürfen bearbeiten - alle anderen landen sonst auf einer Fehlerseite. Daher zur Ansicht.
+                    header("Location: antrag_ansehen.php?antrnr=" . urlencode($neue_nr) . "&msg=finalized");
                 }
                 exit;
 
