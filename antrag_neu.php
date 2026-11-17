@@ -60,53 +60,9 @@ $aktive_typen = get_aktive_typen($bart_config);
  * @return string Die neue Antragsnummer
  */
 function generiereAntragsnummer($pdo, $prefix = 'A', $date = '') {
-    // Präfix erstellen (z.B. A260514)
-    if ($date === '') {
-        $date_part = date('ymd'); // YYMMDD Format
-    } else {
-        $date_part = $date;
-    }
-
-    $prefix_pattern = $prefix . $date_part;
-
-    // Suche nach bestehenden Anträgen mit diesem Präfix
-    $stmt = $pdo->prepare("
-        SELECT antrnr
-        FROM " . TABLE_ANTRAEGE . "
-        WHERE antrnr LIKE ?
-        ORDER BY antrnr DESC
-        LIMIT 1
-    ");
-    $stmt->execute([$prefix_pattern . '%']);
-    $existing = $stmt->fetch();
-    $a_num = $existing ? (int)substr($existing['antrnr'], -2) : 0;
-
-    // VS-umbenannte Einträge in TABLE_ANTRAEGE berücksichtigen
-    $stmt->execute(['VS' . $date_part . '%']);
-    $existing_vs = $stmt->fetch();
-    $vs_num_a = $existing_vs ? (int)substr($existing_vs['antrnr'], -2) : 0;
-
-    // Auch manuell in TABLE_BESCHLUESSE eingetragene VS-Nummern prüfen
-    $stmt_b = $pdo->prepare("SELECT antrnr FROM " . TABLE_BESCHLUESSE . " WHERE antrnr LIKE ? ORDER BY antrnr DESC LIMIT 1");
-    $stmt_b->execute(['VS' . $date_part . '%']);
-    $existing_b = $stmt_b->fetch();
-    $vs_num_b = $existing_b ? (int)substr($existing_b['antrnr'], -2) : 0;
-
-    $last_number = max($a_num, $vs_num_a, $vs_num_b);
-
-    if ($last_number === 0) {
-        return $prefix_pattern . '01';
-    }
-
-    $new_number = $last_number + 1;
-
-    // Prüfen ob Limit erreicht
-    if ($new_number > 99) {
-        throw new Exception("Tageslimit für Anträge erreicht (max. 99 pro Tag)");
-    }
-
-    // Neue Nummer mit führender Null formatieren
-    return $prefix_pattern . str_pad($new_number, 2, '0', STR_PAD_LEFT);
+    // Gemeinsame Logik (zählt über alle Präfixe A/B/X/Z/VS, damit keine Nummer doppelt vergeben wird)
+    require_once __DIR__ . '/antragsnummer_helper.php';
+    return sv_naechste_antragsnummer($pdo, $prefix, $date);
 }
 
 // Prüfen ob Typen verfügbar sind

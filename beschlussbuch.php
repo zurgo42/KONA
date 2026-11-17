@@ -191,11 +191,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['duplizieren']) && $ka
 
     if ($orig_beschluss && $orig_antrag) {
         // Neue Antragsnummer generieren: A + YYMMDD + laufende Nummer
-        $heute = date('ymd');
-        $count_stmt = $pdo->prepare("SELECT COUNT(*) FROM " . TABLE_ANTRAEGE . " WHERE antrnr LIKE ?");
-        $count_stmt->execute(["A{$heute}%"]);
-        $count = $count_stmt->fetchColumn();
-        $neue_nr = 'A' . $heute . sprintf('%02d', $count + 1);
+        require_once __DIR__ . '/antragsnummer_helper.php';
+        $neue_nr = sv_naechste_antragsnummer($pdo, 'A');
 
         // Finanzielle Auswirkungen: Betrag aus fintext extrahieren
         $fin = 0;

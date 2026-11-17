@@ -443,16 +443,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['zurueckziehen'])) {
             $pdo->prepare("UPDATE " . TABLE_ANTRAEGE . " SET antrnr = ? WHERE antrnr = ?")->execute([$neue_nr, $antrnr]);
 
             // Neue Antragsnummer für Kopie generieren (A-Präfix, aktuelles Datum)
-            $date_part = date('ymd');
-            $stmt_nr = $pdo->prepare("SELECT antrnr FROM " . TABLE_ANTRAEGE . " WHERE antrnr LIKE ? ORDER BY antrnr DESC LIMIT 1");
-            $stmt_nr->execute(['A' . $date_part . '%']);
-            $ex = $stmt_nr->fetch();
-            if (!$ex) {
-                $copy_antrnr = 'A' . $date_part . '01';
-            } else {
-                $n = (int)substr($ex['antrnr'], -2) + 1;
-                $copy_antrnr = 'A' . $date_part . str_pad($n, 2, '0', STR_PAD_LEFT);
-            }
+            require_once __DIR__ . '/antragsnummer_helper.php';
+            $copy_antrnr = sv_naechste_antragsnummer($pdo, 'A');
 
             // Kopie als neuen Antrag (A-Präfix) einstellen
             $abstimmregel_col = TABLE_ANTRAEGE_HAS_ABSTIMMREGEL ? ", abstimmregel" : "";

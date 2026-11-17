@@ -108,6 +108,13 @@ function antrag_zur_abstimmung_stellen($pdo, $antrnr) {
 
     // Neue Nummer generieren: A → B (zur Abstimmung)
     $neue_nr = 'B' . substr($antrnr, 1);
+    // Ist die B-Nummer schon vergeben (Altbestand: frühere Vergabe hat B-Nummern nicht berücksichtigt), freie Nummer desselben Tages nehmen
+    $exists = $pdo->prepare("SELECT COUNT(*) FROM " . TABLE_ANTRAEGE . " WHERE antrnr = ?");
+    $exists->execute([$neue_nr]);
+    if ((int)$exists->fetchColumn() > 0) {
+        require_once __DIR__ . '/antragsnummer_helper.php';
+        $neue_nr = sv_naechste_antragsnummer($pdo, 'B', substr($antrnr, 1, 6));
+    }
 
     // VName-Felder in UPDATE-Statement aufbauen
     // b_date aus PHP-Datum (nicht CURDATE()): gleiche Zeitzone wie der Fristvergleich im Cron
