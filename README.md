@@ -516,7 +516,12 @@ Siehe [docs/INSTALL.md](docs/INSTALL.md) für detaillierte Installationsanweisun
 
 ## Lizenz
 
-Internes Tool - Alle Rechte vorbehalten.
+Copyright (C) 2026 Hermann Meier
+
+KONA ist freie Software: Sie können es unter den Bedingungen der **GNU Affero General Public License** (Version 3, siehe Datei `LICENSE`)
+weitergeben und/oder verändern. Es wird in der Hoffnung bereitgestellt, nützlich zu sein, aber **ohne jede Gewährleistung**.
+Wer KONA verändert und anderen als Webanwendung zur Verfügung stellt, muss den geänderten Quelltext ebenfalls unter dieser Lizenz zugänglich machen.
+Das gilt auch für den Unterordner `fantreffen/`.
 
 ## Entwickelt für
 
