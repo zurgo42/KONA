@@ -187,7 +187,7 @@ class BerechtigteAdapter implements MemberAdapterInterface {
             'is_admin' => isset($row['sv_admin']) ? (int)$row['sv_admin'] : $this->isAdmin($funktion, $row['MNr']),
             'is_confidential' => isset($row['sv_confidential']) ? (int)$row['sv_confidential'] : $this->isConfidential($funktion, $aktiv),
             'sv_admin' => (int)($row['sv_admin'] ?? 0),
-            'is_active' => ($aktiv > 17) ? 1 : 0, // Aktiv wenn shouldInclude() true zurückgibt
+            'is_active' => ($aktiv > 13) ? 1 : 0, // Aktiv wenn shouldInclude() true zurückgibt
             'password_hash' => '', // Kein Passwort bei SSO
             'created_at' => $row['angelegt'] ?? null,
             'role_priority' => $this->getRolePriority($funktion, $aktiv) // Für Sortierung
@@ -309,7 +309,7 @@ class BerechtigteAdapter implements MemberAdapterInterface {
 
     /**
      * Prüft ob ein Datensatz inkludiert werden soll
-     * Filter: aktiv > 17 ODER Funktion IN ('RL', 'SV', 'VA', 'AD', 'FP', 'GF') ODER spezielle Admin-MNr
+     * Filter: aktiv > 13 ODER Funktion IN ('RL', 'SV', 'VA', 'AD', 'FP', 'GF') ODER spezielle Admin-MNr
      */
     private function shouldInclude($row) {
         $aktiv = $row['aktiv'] ?? 0;
@@ -326,7 +326,7 @@ class BerechtigteAdapter implements MemberAdapterInterface {
             return true;
         }
 
-        return ($aktiv > 17) || in_array($funktion, ['RL', 'SV', 'VA', 'AD', 'FP', 'GF']);
+        return ($aktiv > 13) || in_array($funktion, ['RL', 'SV', 'VA', 'AD', 'FP', 'GF']);
     }
 
     public function getMemberById($id) {

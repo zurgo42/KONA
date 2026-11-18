@@ -8,6 +8,10 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ### Added (Neu)
 
+#### Teilnehmerauswahl im Adapter-Betrieb (2026-11-18)
+
+- Fix: `adapters/MemberAdapter.php` nimmt jetzt alle Personen mit `aktiv > 13` (statt `> 17`) auf; vorher fehlten sie in Teilnehmer- und Auswahllisten. Rechte-Prüfungen (z. B. Vorstand `aktiv > 17`) bleiben unverändert.
+
 #### Wiederherstellung gelöschter TOPs (2026-11-18)
 
 - Neu: `tools/top_wiederherstellen.php` (Passwortschutz wie die übrigen Systemwerkzeuge): stellt versehentlich gelöschte TOPs samt Kommentaren wieder her – entweder aus der Sicherung `TOP-Loeschen-Sicherung` (Tabelle `protokoll`, exakt) oder durch Rekonstruktion aus dem Datenbank-Protokoll `svaudit_log` (Anlege- und Änderungseinträge). Felder sind vor dem Wiederherstellen editierbar; vom Audit-Log auf 300 Zeichen gekürzte Texte werden rot markiert. Es werden nur INSERTs ausgeführt.
