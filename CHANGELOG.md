@@ -8,6 +8,11 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ### Added (Neu)
 
+#### Wiederherstellung gelöschter TOPs (2026-11-18)
+
+- Neu: `tools/top_wiederherstellen.php` (Passwortschutz wie die übrigen Systemwerkzeuge): stellt versehentlich gelöschte TOPs samt Kommentaren wieder her – entweder aus der Sicherung `TOP-Loeschen-Sicherung` (Tabelle `protokoll`, exakt) oder durch Rekonstruktion aus dem Datenbank-Protokoll `svaudit_log` (Anlege- und Änderungseinträge). Felder sind vor dem Wiederherstellen editierbar; vom Audit-Log auf 300 Zeichen gekürzte Texte werden rot markiert. Es werden nur INSERTs ausgeführt.
+- Neu: `tools/audit_parser.php` (Hilfsfunktionen zum Auslesen der SQL-Texte im Audit-Log).
+
 #### Dokumentensammlung in MTool einbinden (2026-10-30)
 
 - Neu: `dokumente_mtool.php` für Seiten, die nur `$MNr` kennen (z. B. `MTool/mtool.php`): lädt `functions.php`, ermittelt das Mitglied aus `$MNr` und bindet `tab_dokumente_allgemein.php` ein. Die alte include-Zeile wird einfach durch `include '../Sitzungsverwaltung/dokumente_mtool.php';` ersetzt.
