@@ -14,6 +14,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 #### Wiederherstellung gelöschter TOPs (2026-11-18)
 
+- Erweitert: `tools/top_wiederherstellen.php` nutzt zusätzlich die Tabelle `protokoll`: Protokolltext wird aus den Einträgen „Protokoll-Speichern“ nachgebaut (dort nicht auf 300 Zeichen gekürzt), alle zum TOP gehörenden Einträge (Bearbeiten, Kommentare, Protokoll) werden zum Nachlesen aufgelistet, und Titel/Beschreibung lassen sich aus „TOP-Neu“-Einträgen übernehmen.
 - Neu: `tools/top_wiederherstellen.php` (Passwortschutz wie die übrigen Systemwerkzeuge): stellt versehentlich gelöschte TOPs samt Kommentaren wieder her – entweder aus der Sicherung `TOP-Loeschen-Sicherung` (Tabelle `protokoll`, exakt) oder durch Rekonstruktion aus dem Datenbank-Protokoll `svaudit_log` (Anlege- und Änderungseinträge). Felder sind vor dem Wiederherstellen editierbar; vom Audit-Log auf 300 Zeichen gekürzte Texte werden rot markiert. Es werden nur INSERTs ausgeführt.
 - Neu: `tools/audit_parser.php` (Hilfsfunktionen zum Auslesen der SQL-Texte im Audit-Log).
 

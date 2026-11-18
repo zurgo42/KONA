@@ -55,6 +55,36 @@ function zeile_einfuegen(PDO $pdo, string $tabelle, array $werte): string {
     return $pdo->lastInsertId();
 }
 
+
+/** Zeilen aus der Tabelle protokoll, die zu einem TOP gehören (nach item_id), zeitlich aufsteigend */
+function prot_zeilen_zu_top(PDO $pdo, int $item_id): array {
+    try {
+        $st = $pdo->prepare("SELECT zeit, KurzN, was, string FROM protokoll WHERE string LIKE ? OR string LIKE ? ORDER BY zeit ASC");
+        $st->execute(['TOP-' . $item_id . ':%', 'Sitzung %/' . $item_id . ': %']);
+        return $st->fetchAll();
+    } catch (Throwable $e) { return []; }
+}
+
+/** Protokolltext aus den Diff-Einträgen "Protokoll-Speichern" nachbauen (beste Näherung) */
+function prot_protokolltext_rekonstruieren(array $zeilen): string {
+    $text = '';
+    foreach ($zeilen as $z) {
+        if ($z['was'] !== 'Protokoll-Speichern') continue;
+        $d = preg_replace('/^TOP-\d+:\s*/u', '', (string)$z['string']);
+        if (preg_match("/^Protokoll='(.*)'→'(.*)'$/su", $d, $m)) {          // kurze Werte: vollständig
+            $text = $m[2];
+        } elseif (preg_match('/^Protokoll=\[(…?)(.*?)«(.*?)»(.*?)→\1\2«(.*?)»\4(…?)\]$/su', $d, $m)) {   // lange Texte: Teilstück mit Kontext
+            $alt = $m[2] . $m[3] . $m[4];
+            $neu = $m[2] . $m[5] . $m[4];
+            if ($text === '' || $m[3] === '' && $m[2] === '' && $m[4] === '') { if ($text === '') $text = $neu; }
+            elseif ($alt !== '' && ($pos = mb_strpos($text, $alt)) !== false) {
+                $text = mb_substr($text, 0, $pos) . $neu . mb_substr($text, $pos + mb_strlen($alt));
+            }
+        }
+    }
+    return $text;
+}
+
 $comment_tables = ['comments' => 'svagenda_comments', 'live_comments' => 'svagenda_live_comments', 'post_comments' => 'svagenda_post_comments'];
 
 // ---------------------------------------------------------------- Wiederherstellen (POST)
@@ -190,10 +220,44 @@ if (isset($_GET['audit_item']) && tabelle_vorhanden($pdo, 'svaudit_log')) {
             $komm[] = ['typ' => $typ, 'daten' => $daten];
         }
     }
+    // 3b. Ergänzung aus der Tabelle protokoll (Texte dort sind nicht auf 300 Zeichen gekürzt)
+    $pz = prot_zeilen_zu_top($pdo, $item_id);
+    $pt = prot_protokolltext_rekonstruieren($pz);
+    if ($pt !== '' && mb_strlen($pt) > mb_strlen((string)($item['protocol_notes'] ?? ''))) {
+        $item['protocol_notes'] = $pt; unset($gek['protocol_notes']);
+        $meldungen[] = 'Protokolltext wurde aus den Einträgen der Tabelle protokoll nachgebaut - bitte auf Vollständigkeit prüfen (bei mehrfacher Bearbeitung nur näherungsweise).';
+    }
+    if (!empty($_GET['prot_neu'])) {   // Titel/Beschreibung aus einem Eintrag "TOP-Neu" übernehmen
+        $st = $pdo->prepare("SELECT string FROM protokoll WHERE zeit = ? AND was LIKE 'TOP-Neu%' LIMIT 1");
+        $st->execute([$_GET['prot_neu']]);
+        if (($ps = $st->fetchColumn()) && preg_match('/^Sitzung (\d+): (.*)$/su', $ps, $m)) {
+            $teile = explode(' | ', $m[2], 2);
+            $item['meeting_id'] = $m[1]; $item['title'] = $teile[0]; $item['description'] = $teile[1] ?? ($item['description'] ?? '');
+            unset($gek['title'], $gek['description']);
+        }
+    }
     echo '<p style="background:#fff3cd;padding:8px;border-left:4px solid #ffc107">Rekonstruiert aus dem Audit-Log: Anlege-Eintrag ' . ($basis ? 'gefunden' : '<b>nicht gefunden</b>') . ', ' . $n_upd . ' Änderung(en) eingerechnet. '
         . 'Texte über 300 Zeichen sind dort gekürzt (rot markiert) - bitte, soweit möglich, aus anderer Quelle ergänzen.</p>';
     foreach (array_unique($meldungen) as $m) echo '<p style="color:#b26a00">⚠️ ' . h($m) . '</p>';
     formular($item, $komm, $gek, $token, 'Audit-Log');
+
+    // Zugehörige Einträge aus der Tabelle protokoll (zum Nachlesen und Kopieren)
+    echo '<h3>Zugehörige Einträge aus der Tabelle protokoll</h3>';
+    if (!$pz) echo '<p style="color:#666">Keine Einträge mit dieser TOP-Nummer.</p>';
+    else {
+        echo '<table border="1" cellpadding="4" style="border-collapse:collapse;font-size:13px;width:100%"><tr><th>Zeit</th><th>Wer</th><th>Aktion</th><th>Inhalt</th></tr>';
+        foreach ($pz as $z) echo '<tr><td>' . h($z['zeit']) . '</td><td>' . h($z['KurzN']) . '</td><td>' . h($z['was']) . '</td><td style="white-space:pre-wrap">' . h($z['string']) . '</td></tr>';
+        echo '</table>';
+    }
+    $st = $pdo->prepare("SELECT zeit, KurzN, string FROM protokoll WHERE was LIKE 'TOP-Neu%' AND zeit <= (SELECT logged_at FROM svaudit_log WHERE log_id = ?) ORDER BY zeit DESC LIMIT 15");
+    $st->execute([$del_log]);
+    $neu_rows = $st->fetchAll();
+    if ($neu_rows) {
+        echo '<h4>Zuletzt angelegte TOPs (Titel und Beschreibung ins Formular übernehmen)</h4><ul>';
+        foreach ($neu_rows as $z) echo '<li>' . h($z['zeit']) . ' ' . h($z['KurzN']) . ': ' . h(mb_substr($z['string'], 0, 120))
+            . ' – <a href="?audit_item=' . $item_id . '&del_log=' . $del_log . '&prot_neu=' . urlencode($z['zeit']) . '">übernehmen</a></li>';
+        echo '</ul>';
+    }
 }
 
 // ---------------------------------------------------------------- Übersichten
