@@ -282,8 +282,14 @@ if (isset($_POST['add_agenda_item'])) {
  * Verwendet von: tab_agenda_display_preparation.php - "Löschen" Button beim Bearbeiten
  * Redirect: ?tab=agenda&meeting_id=X
  */
-if (isset($_POST['delete_agenda_item']) && isset($_POST['item_id'])) {
+$__del_knopf_id = preg_match('/^id:(\d+)$/', (string)($_POST['delete_agenda_item'] ?? ''), $__m) ? (int)$__m[1] : 0;
+if (isset($_POST['delete_agenda_item']) && (isset($_POST['item_id']) || $__del_knopf_id > 0)) {
     $item_id = intval($_POST['item_id'] ?? 0);
+    // Stehen alle TOPs in EINEM Formular (beendete Sitzung), trägt der Knopf selbst die ID des TOP (value = "id:<item_id>").
+    // Ein verstecktes Feld item_id wäre dort mehrfach vorhanden, PHP nähme den letzten Wert -> es würde der falsche TOP gelöscht.
+    if ($__del_knopf_id > 0) {
+        $item_id = $__del_knopf_id;
+    }
 
     if ($item_id) {
         try {
@@ -320,6 +326,23 @@ if (isset($_POST['delete_agenda_item']) && isset($_POST['item_id'])) {
             if ($can_delete) {
                 [$_prot_mnr, $_prot_kurz] = get_protokoll_user($current_user);
                 protokoll($pdo, $_prot_mnr, $_prot_kurz, 'TOP-Loeschen', 'Sitzung ' . $current_meeting_id . ': ' . substr($item['title'], 0, 80));
+
+                // Vollständige Sicherung des TOP (inkl. Protokoll und Kommentare) in das Protokoll schreiben,
+                // damit ein versehentlich gelöschter TOP aus dem Datenbank-Protokoll wiederhergestellt werden kann
+                try {
+                    $sicherung = ['item' => null, 'comments' => [], 'live_comments' => [], 'post_comments' => []];
+                    $s1 = $pdo->prepare("SELECT * FROM svagenda_items WHERE item_id = ?");
+                    $s1->execute([$item_id]);
+                    $sicherung['item'] = $s1->fetch(PDO::FETCH_ASSOC);
+                    foreach (['comments' => 'svagenda_comments', 'live_comments' => 'svagenda_live_comments', 'post_comments' => 'svagenda_post_comments'] as $key => $tabelle) {
+                        $s2 = $pdo->prepare("SELECT * FROM $tabelle WHERE item_id = ?");
+                        $s2->execute([$item_id]);
+                        $sicherung[$key] = $s2->fetchAll(PDO::FETCH_ASSOC);
+                    }
+                    protokoll($pdo, $_prot_mnr, $_prot_kurz, 'TOP-Loeschen-Sicherung', json_encode($sicherung, JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR));
+                } catch (Throwable $e) {
+                    error_log('TOP-Loeschen-Sicherung fehlgeschlagen: ' . $e->getMessage());
+                }
 
                 // TOP löschen
                 $stmt = $pdo->prepare("DELETE FROM svagenda_items WHERE item_id = ?");

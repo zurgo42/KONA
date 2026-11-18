@@ -267,12 +267,11 @@ foreach ($agenda_items as $item):
                 <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
                     <button type="submit"
                             name="delete_agenda_item"
-                            value="1"
-                            onclick="return confirm('⚠️ TOP wirklich löschen?\n\nDieser Vorgang kann nicht rückgängig gemacht werden!\n\n• Das TOP wird komplett entfernt\n• Alle Kommentare gehen verloren\n• Das Protokoll für diesen TOP wird gelöscht')"
+                            value="id:<?php echo (int)$item['item_id']; ?>"
+                            onclick="return confirm('⚠️ TOP <?php echo (int)$item['top_number']; ?> „<?php echo htmlspecialchars(addslashes(mb_substr($item['title'], 0, 60)), ENT_QUOTES); ?>“ wirklich löschen?\n\nDieser Vorgang kann nicht rückgängig gemacht werden!\n\n• Das TOP wird komplett entfernt\n• Alle Kommentare gehen verloren\n• Das Protokoll für diesen TOP wird gelöscht')"
                             style="background: #f44336; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">
                         🗑️ TOP löschen
                     </button>
-                    <input type="hidden" name="item_id" value="<?php echo $item['item_id']; ?>">
                 </div>
             </div>
         <?php elseif (!empty($item['protocol_notes'])): ?>
