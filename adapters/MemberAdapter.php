@@ -361,6 +361,18 @@ class BerechtigteAdapter implements MemberAdapterInterface {
         return $members;
     }
 
+    /**
+     * Alle Datensätze ohne shouldInclude-Filter (z.B. nachträgliches Hinzufügen von Teilnehmern)
+     */
+    public function getAllMembersUnfiltered() {
+        $rows = $this->pdo->query("SELECT * FROM berechtigte ORDER BY Name, Vorname")->fetchAll(PDO::FETCH_ASSOC);
+        $members = array_map([$this, 'mapToStandard'], $rows);
+        usort($members, function($a, $b) {
+            return strcmp($a['last_name'], $b['last_name']) ?: strcmp($a['first_name'], $b['first_name']);
+        });
+        return $members;
+    }
+
     public function getMemberByEmail($email) {
         $stmt = $this->pdo->prepare("SELECT * FROM berechtigte WHERE eMail = ?");
         $stmt->execute([$email]);

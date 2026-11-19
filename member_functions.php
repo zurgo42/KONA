@@ -110,6 +110,16 @@ function get_all_members($pdo) {
 }
 
 /**
+ * Alle Mitglieder ohne Aktiv-/Funktionsfilter des Adapters
+ */
+function get_all_members_unfiltered($pdo) {
+    $adapter = get_member_adapter($pdo);
+    return method_exists($adapter, 'getAllMembersUnfiltered')
+        ? $adapter->getAllMembersUnfiltered()
+        : $adapter->getAllMembers();
+}
+
+/**
  * Holt EIN Mitglied nach ID
  *
  * @param PDO $pdo Datenbankverbindung

@@ -111,9 +111,9 @@ if (isset($_GET['debug']) && $_GET['debug'] == 1) {
         $stmt_invited->execute([$current_meeting_id]);
         $invited_ids = $stmt_invited->fetchAll(PDO::FETCH_COLUMN);
         $uninvited_members = [];
-        $_members_src = (isset($all_members) && is_array($all_members)) ? $all_members : get_all_members($pdo);
-        foreach ($_members_src as $_m) {
-            if (!in_array($_m['member_id'], $invited_ids) && $_m['is_active']) $uninvited_members[] = $_m;
+        // Kein Aktiv-Filter: der Protokollführer soll jede Person nachtragen können
+        foreach (get_all_members_unfiltered($pdo) as $_m) {
+            if (!in_array($_m['member_id'], $invited_ids)) $uninvited_members[] = $_m;
         }
         usort($uninvited_members, function($a, $b) { return strcmp($a['last_name'], $b['last_name']); });
         ?>

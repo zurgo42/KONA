@@ -10,6 +10,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 #### Teilnehmerliste nach Sitzungsende (2026-11-19)
 
+- Fix: Die Auswahl „Nicht eingeladene Teilnehmer hinzufügen“ (Status ended) filtert nicht mehr nach `aktiv`/Funktion: neue Methode `getAllMembersUnfiltered()` im `BerechtigteAdapter`, Hilfsfunktion `get_all_members_unfiltered()`. Datenbankfehler beim Hinzufügen werden jetzt als Meldung angezeigt statt nur ins Log geschrieben.
 - Der Protokollführer kann in den Status `ended`/`protocol_ready` jetzt auch nicht eingeladene Teilnehmer nachträglich hinzufügen (neuer Block unter der Teilnehmerverwaltung, Handler `add_uninvited_participant` in `process_agenda.php` entsprechend erweitert). Die Anwesenheit ließ sich dort bereits ändern.
 
 #### Teilnehmerauswahl im Adapter-Betrieb (2026-11-18)

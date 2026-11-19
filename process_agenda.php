@@ -1707,6 +1707,7 @@ if (isset($_POST['add_uninvited_participant'])) {
             exit;
         } catch (PDOException $e) {
             error_log("Fehler beim Hinzufügen des Teilnehmers: " . $e->getMessage());
+            $error = "Teilnehmer konnte nicht hinzugefügt werden: " . $e->getMessage();
         }
     }
 }
