@@ -8,6 +8,10 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ### Added (Neu)
 
+#### Teilnehmerliste nach Sitzungsende (2026-11-19)
+
+- Der Protokollführer kann in den Status `ended`/`protocol_ready` jetzt auch nicht eingeladene Teilnehmer nachträglich hinzufügen (neuer Block unter der Teilnehmerverwaltung, Handler `add_uninvited_participant` in `process_agenda.php` entsprechend erweitert). Die Anwesenheit ließ sich dort bereits ändern.
+
 #### Teilnehmerauswahl im Adapter-Betrieb (2026-11-18)
 
 - Fix: `adapters/MemberAdapter.php` nimmt jetzt alle Personen mit `aktiv > 13` (statt `> 17`) auf; vorher fehlten sie in Teilnehmer- und Auswahllisten. Rechte-Prüfungen (z. B. Vorstand `aktiv > 17`) bleiben unverändert.

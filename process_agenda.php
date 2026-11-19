@@ -1670,7 +1670,7 @@ if (isset($_POST['update_attendance']) && $is_secretary && in_array($meeting['st
 
 /**
  * Nicht eingeladene Teilnehmer hinzufügen
- * - Im active Status: Nur Secretary
+ * - Im active/ended/protocol_ready Status: Nur Secretary
  * - Im preparation Status: Nur Admins
  */
 if (isset($_POST['add_uninvited_participant'])) {
@@ -1678,7 +1678,7 @@ if (isset($_POST['add_uninvited_participant'])) {
 
     // Berechtigung prüfen
     $is_allowed = false;
-    if ($meeting['status'] === 'active' && $is_secretary) {
+    if (in_array($meeting['status'], ['active', 'ended', 'protocol_ready'], true) && $is_secretary) {
         $is_allowed = true;
     } elseif ($meeting['status'] === 'preparation' && $current_user['is_admin'] == 1) {
         $is_allowed = true;

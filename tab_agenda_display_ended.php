@@ -105,6 +105,37 @@ if (isset($_GET['debug']) && $_GET['debug'] == 1) {
             </button>
         </form>
 
+        <!-- Nicht eingeladene Teilnehmer nachträglich hinzufügen -->
+        <?php
+        $stmt_invited = $pdo->prepare("SELECT member_id FROM svmeeting_participants WHERE meeting_id = ?");
+        $stmt_invited->execute([$current_meeting_id]);
+        $invited_ids = $stmt_invited->fetchAll(PDO::FETCH_COLUMN);
+        $uninvited_members = [];
+        $_members_src = (isset($all_members) && is_array($all_members)) ? $all_members : get_all_members($pdo);
+        foreach ($_members_src as $_m) {
+            if (!in_array($_m['member_id'], $invited_ids) && $_m['is_active']) $uninvited_members[] = $_m;
+        }
+        usort($uninvited_members, function($a, $b) { return strcmp($a['last_name'], $b['last_name']); });
+        ?>
+        <div style="margin-top: 20px; padding-top: 15px; border-top: 2px solid #2196f3;">
+            <h4 style="margin: 0 0 10px 0; color: #1976d2;">➕ Nicht eingeladene Teilnehmer hinzufügen</h4>
+            <?php if ($uninvited_members): ?>
+                <form method="POST" action="?tab=agenda&meeting_id=<?php echo $current_meeting_id; ?>" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <input type="hidden" name="add_uninvited_participant" value="1">
+                    <select name="new_participant_id" required style="flex: 3; min-width: 200px; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                        <option value="">-- Teilnehmer auswählen --</option>
+                        <?php foreach ($uninvited_members as $um): ?>
+                            <option value="<?php echo (int)$um['member_id']; ?>"><?php echo htmlspecialchars($um['first_name'] . ' ' . $um['last_name']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <button type="submit" style="background: #4caf50; color: white; padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">➕ Hinzufügen</button>
+                </form>
+                <small style="display: block; margin-top: 5px; color: #666;">Hinzugefügte Teilnehmer erhalten den Status "anwesend" und können danach oben angepasst werden.</small>
+            <?php else: ?>
+                <p style="margin: 0; color: #666; font-style: italic;">Alle Mitglieder sind bereits eingeladen.</p>
+            <?php endif; ?>
+        </div>
+
         <script>
         function setAllPresent() {
             document.querySelectorAll('.attendance-radio').forEach(radio => {
