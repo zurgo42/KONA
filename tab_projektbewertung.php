@@ -44,7 +44,8 @@ $pb_items = pb_items($pdo);
         <span style="color:#666;font-size:13px;">(derzeit <?php echo count($pb_items); ?> Projekte)</span>
     </form>
     <p style="margin:8px 0 0 0;">
-        <a href="?tab=projekte&csv=1">⬇️ Einzeldaten als CSV (ohne Mitgliedsnummer)</a> &nbsp;·&nbsp;
+        <a href="?tab=projekte&csv=1">⬇️ CSV: Voten der Teilnehmer nebeneinander (ohne Kommentare)</a> &nbsp;·&nbsp;
+        <a href="?tab=projekte&ansicht=daten">Einzeldaten mit Kommentaren (Liste)</a> &nbsp;·&nbsp;
         <a href="?tab=projekte&ansicht=ergebnis">Ergebnisansicht ansehen</a> &nbsp;·&nbsp;
         <a href="?tab=projekte">Eingabemaske</a>
         &nbsp;·&nbsp; <span style="color:#666;">Runde <?php echo (int)PB_RUNDE; ?>, Eingabe bis <?php echo $pb_h(pb_stichtag_text()); ?>
@@ -55,6 +56,32 @@ $pb_items = pb_items($pdo);
 
 <?php if (!$pb_items): ?>
     <p style="color:#666;">Es sind noch keine Projekte eingelesen.</p>
+<?php elseif (($_GET['ansicht'] ?? '') === 'daten' && $pb_zugriff['admin']): ?>
+    <?php $pb_daten = pb_einzeldaten($pdo); ?>
+    <p style="color:#555;">Alle Einzelbewertungen der Runde <?php echo (int)PB_RUNDE; ?> (<?php echo count($pb_daten); ?> Einträge), ohne Namen: Die Bewerter sind durch Kürzel (P01, P02 ...) ersetzt, dieselben wie in der CSV-Datei.</p>
+    <div style="overflow-x:auto;">
+    <table style="border-collapse:collapse;width:100%;background:#fff;font-size:14px;">
+        <thead><tr style="background:#f0f0f0;text-align:left;">
+            <th style="padding:6px;border:1px solid #ddd;">ID</th><th style="padding:6px;border:1px solid #ddd;">Gruppe</th>
+            <th style="padding:6px;border:1px solid #ddd;">Stichwort</th><th style="padding:6px;border:1px solid #ddd;">Bewerter</th>
+            <th style="padding:6px;border:1px solid #ddd;">Aufwand</th><th style="padding:6px;border:1px solid #ddd;">Nutzen</th>
+            <th style="padding:6px;border:1px solid #ddd;">Kommentar</th>
+        </tr></thead>
+        <tbody>
+        <?php foreach ($pb_daten as $r): ?>
+            <tr>
+                <td style="padding:5px 6px;border:1px solid #ddd;"><?php echo $pb_h($r['item_id']); ?></td>
+                <td style="padding:5px 6px;border:1px solid #ddd;"><?php echo $pb_h($r['gruppe']); ?></td>
+                <td style="padding:5px 6px;border:1px solid #ddd;"><?php echo $pb_h($r['stichwort']); ?></td>
+                <td style="padding:5px 6px;border:1px solid #ddd;"><?php echo $pb_h($r['bewerter']); ?></td>
+                <td style="padding:5px 6px;border:1px solid #ddd;text-align:center;"><?php echo $pb_h($r['aufwand']); ?></td>
+                <td style="padding:5px 6px;border:1px solid #ddd;text-align:center;"><?php echo $pb_h($r['nutzen']); ?></td>
+                <td style="padding:5px 6px;border:1px solid #ddd;"><?php echo nl2br($pb_h($r['kommentar'])); ?></td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table>
+    </div>
 <?php elseif ($pb_ergebnis): ?>
     <?php $pb_erg = pb_auswertung($pdo); ?>
     <p style="color:#555;">Ergebnis der Runde <?php echo (int)PB_RUNDE; ?>: Mittelwerte der Einschätzungen (Skala 1 bis 7), sortiert nach <strong>Nutzen minus Aufwand</strong> (höchster Wert zuerst).</p>

@@ -46,12 +46,17 @@ function pb_tabellen_sicherstellen(PDO $pdo): void {
     $done = true;
 }
 
-/** Zugriff: ['sehen'=>bool, 'admin'=>bool (Import/CSV)] */
+/**
+ * Zugriff: ['sehen'=>bool, 'admin'=>bool (Import/Einzeldaten/CSV)]
+ * - Testpersonen: immer
+ * - aktiv > PB_MIN_AKTIV: sobald PB_FREIGABE_ALLE gesetzt ist, in jedem Fall aber für die Ergebnistabelle nach dem Stichtag
+ */
 function pb_zugriff(array $user): array {
     $mnr = trim((string)($user['membership_number'] ?? ''));
     $tester = in_array($mnr, array_map('trim', explode(',', PB_TESTPERSONEN)), true);
-    $alle = PB_FREIGABE_ALLE && (int)($user['aktiv'] ?? 0) > PB_MIN_AKTIV;
-    return ['sehen' => $tester || $alle, 'admin' => $tester, 'eingabe_berechtigt' => $tester || $alle];
+    $berechtigt = (int)($user['aktiv'] ?? 0) > PB_MIN_AKTIV;
+    $sehen = $tester || ($berechtigt && (PB_FREIGABE_ALLE || !pb_eingabe_offen()));
+    return ['sehen' => $sehen, 'admin' => $tester, 'eingabe_berechtigt' => $sehen];
 }
 
 /** true solange Eingaben möglich sind (bis Ende des Stichtags) */
@@ -129,27 +134,56 @@ function pb_auswertung(PDO $pdo): array {
     return $items;
 }
 
-/** Einzeldaten als CSV (ohne Mitgliedsnummer; Bewerter werden pseudonymisiert P01, P02 ...) */
-function pb_csv(PDO $pdo): string {
-    $st = $pdo->prepare("SELECT r.item_id, i.gruppe, i.stichwort, r.member_id, r.aufwand, r.nutzen, r.kommentar
-                         FROM svprojekt_ratings r LEFT JOIN svprojekt_items i ON i.item_id = r.item_id
-                         WHERE r.runde = ? ORDER BY r.item_id, r.member_id");
-    $st->execute([PB_RUNDE]);
-    $rows = $st->fetchAll(PDO::FETCH_ASSOC);
-    $ids = array_values(array_unique(array_column($rows, 'member_id')));
+/** Bewerter-Pseudonyme P01, P02 ... (Reihenfolge nicht an Mitgliedsnummer/-id gekoppelt) */
+function pb_pseudonyme(array $member_ids): array {
+    $ids = array_values(array_unique(array_map('intval', $member_ids)));
     sort($ids);
-    // Pseudonyme in zufälliger, aber pro Export stabiler Reihenfolge, damit sie nicht der Mitgliedsnummer folgen
     mt_srand(crc32('pb' . PB_RUNDE . count($ids)));
     shuffle($ids);
     $pseudo = [];
     foreach ($ids as $i => $mid) $pseudo[$mid] = sprintf('P%02d', $i + 1);
+    return $pseudo;
+}
+
+/** Alle Einzelbewertungen der Runde als Liste (mit Kommentaren, ohne Mitgliedsangaben), sortiert nach Projekt und Bewerter-Kürzel */
+function pb_einzeldaten(PDO $pdo): array {
+    $st = $pdo->prepare("SELECT r.item_id, i.gruppe, i.stichwort, i.sortierung, r.member_id, r.aufwand, r.nutzen, r.kommentar
+                         FROM svprojekt_ratings r LEFT JOIN svprojekt_items i ON i.item_id = r.item_id
+                         WHERE r.runde = ?");
+    $st->execute([PB_RUNDE]);
+    $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+    $pseudo = pb_pseudonyme(array_column($rows, 'member_id'));
+    foreach ($rows as &$r) { $r['bewerter'] = $pseudo[(int)$r['member_id']]; unset($r['member_id']); }
+    unset($r);
+    usort($rows, function ($a, $b) {
+        return ((int)$a['sortierung'] <=> (int)$b['sortierung']) ?: strcmp((string)$a['item_id'], (string)$b['item_id']) ?: strcmp($a['bewerter'], $b['bewerter']);
+    });
+    return $rows;
+}
+
+/** CSV für die Auswertung: eine Zeile je Projekt, je Bewerter zwei Spalten (Aufwand, Nutzen) nebeneinander, ohne Kommentare */
+function pb_csv(PDO $pdo): string {
+    $items = pb_items($pdo);
+    $st = $pdo->prepare("SELECT item_id, member_id, aufwand, nutzen FROM svprojekt_ratings WHERE runde = ?");
+    $st->execute([PB_RUNDE]);
+    $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+    $pseudo = pb_pseudonyme(array_column($rows, 'member_id'));
+    asort($pseudo);   // P01, P02, ... in Spaltenreihenfolge
+    $werte = [];
+    foreach ($rows as $r) $werte[$r['item_id']][(int)$r['member_id']] = [$r['aufwand'], $r['nutzen']];
     $f = fopen('php://temp', 'w+');
     fwrite($f, "\xEF\xBB\xBF");
-    fputcsv($f, ['Runde', 'ID', 'Gruppe', 'Stichwort', 'Bewerter', 'Aufwand', 'Nutzen', 'Nutzen_minus_Aufwand', 'Kommentar'], ';');
-    foreach ($rows as $r) {
-        $d = ($r['aufwand'] !== null && $r['nutzen'] !== null) ? (int)$r['nutzen'] - (int)$r['aufwand'] : '';
-        fputcsv($f, [PB_RUNDE, $r['item_id'], $r['gruppe'], $r['stichwort'], $pseudo[$r['member_id']],
-                     $r['aufwand'], $r['nutzen'], $d, str_replace(["\r\n", "\r"], "\n", (string)$r['kommentar'])], ';');
+    $kopf = ['ID', 'Gruppe', 'Stichwort'];
+    foreach ($pseudo as $mid => $p) { $kopf[] = $p . ' Aufwand'; $kopf[] = $p . ' Nutzen'; }
+    fputcsv($f, $kopf, ';');
+    foreach ($items as $it) {
+        $z = [$it['item_id'], $it['gruppe'], $it['stichwort']];
+        foreach ($pseudo as $mid => $p) {
+            $w = $werte[$it['item_id']][$mid] ?? [null, null];
+            $z[] = $w[0] === null ? '' : $w[0];
+            $z[] = $w[1] === null ? '' : $w[1];
+        }
+        fputcsv($f, $z, ';');
     }
     rewind($f);
     $csv = stream_get_contents($f);
