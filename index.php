@@ -464,6 +464,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $active_tab === 'meetings') {
     require_once 'process_meetings.php';
 }
 
+// PROCESS PROJEKTBEWERTUNG (temporäres Feature)
+if ($active_tab === 'projekte' && ($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_GET['csv']))) {
+    require_once 'process_projektbewertung.php';
+}
+
 // PROCESS ABSENCES
 // Wird bei POST-Requests auf dem Sitzungen-Tab oder Vertretung-Tab für Abwesenheiten ausgeführt
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($active_tab === 'meetings' || $active_tab === 'vertretung' || $active_tab === 'admin')) {
@@ -918,6 +923,15 @@ $check_localstorage = !isset($_COOKIE['darkMode']);
         </a>
         <?php endif; ?>
 
+        <!-- Projektbewertung (temporär, nur für freigeschaltete Personen) -->
+        <?php
+        require_once 'projektbewertung_helper.php';
+        if (pb_zugriff($current_user)['sehen']): ?>
+        <a href="?tab=projekte" class="<?php echo $active_tab === 'projekte' ? 'active' : ''; ?>">
+            📊 Projekte bewerten
+        </a>
+        <?php endif; ?>
+
         <!-- Benachrichtigungs-Center -->
         <?php include 'notification_center.php'; ?>
 
@@ -1052,6 +1066,11 @@ $check_localstorage = !isset($_COOKIE['darkMode']);
             case 'vertretung':
                 // Vertretungen & Abwesenheiten anzeigen
                 include 'tab_vertretung.php';
+                break;
+
+            case 'projekte':
+                // Projektbewertung nach Aufwand und Nutzen (temporär)
+                include 'tab_projektbewertung.php';
                 break;
 
             case 'texte':
