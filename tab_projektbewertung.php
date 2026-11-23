@@ -85,31 +85,60 @@ $pb_items = pb_items($pdo);
 <?php elseif ($pb_ergebnis): ?>
     <?php $pb_erg = pb_auswertung($pdo); ?>
     <p style="color:#555;">Ergebnis der Runde <?php echo (int)PB_RUNDE; ?>: Mittelwerte der Einschätzungen (Skala 1 bis 7), sortiert nach <strong>Nutzen minus Aufwand</strong> (höchster Wert zuerst).</p>
+    <p style="color:#666;font-size:13px;margin:0 0 6px 0;">Zum Sortieren auf eine Spaltenüberschrift klicken (erneut klicken: Reihenfolge umkehren).</p>
     <div style="overflow-x:auto;">
-    <table style="border-collapse:collapse;width:100%;background:#fff;">
+    <table id="pb-ergebnis" style="border-collapse:collapse;width:100%;background:#fff;">
         <thead><tr style="background:#f0f0f0;text-align:left;">
-            <th style="padding:8px;border:1px solid #ddd;">ID</th><th style="padding:8px;border:1px solid #ddd;">Gruppe</th>
-            <th style="padding:8px;border:1px solid #ddd;">Stichwort</th>
-            <th style="padding:8px;border:1px solid #ddd;text-align:right;">Aufwand Ø</th>
-            <th style="padding:8px;border:1px solid #ddd;text-align:right;">Nutzen Ø</th>
-            <th style="padding:8px;border:1px solid #ddd;text-align:right;">Nutzen − Aufwand</th>
-            <th style="padding:8px;border:1px solid #ddd;text-align:right;">Anzahl</th>
+            <?php foreach ([['ID', 'text', ''], ['Gruppe', 'text', ''], ['Stichwort', 'text', ''], ['Aufwand Ø', 'num', 'right'], ['Nutzen Ø', 'num', 'right'], ['Nutzen − Aufwand', 'num', 'right'], ['Anzahl', 'num', 'right']] as $i => [$tit, $typ, $al]): ?>
+                <th data-typ="<?php echo $typ; ?>" data-col="<?php echo $i; ?>" style="padding:8px;border:1px solid #ddd;cursor:pointer;user-select:none;<?php echo $al ? 'text-align:right;' : ''; ?>" title="Nach dieser Spalte sortieren"><?php echo $pb_h($tit); ?> <span class="pb-pfeil" style="color:#888;"><?php echo $i === 5 ? '▼' : ''; ?></span></th>
+            <?php endforeach; ?>
         </tr></thead>
         <tbody>
         <?php foreach ($pb_erg as $r): ?>
             <tr>
-                <td style="padding:6px 8px;border:1px solid #ddd;"><?php echo $pb_h($r['item_id']); ?></td>
-                <td style="padding:6px 8px;border:1px solid #ddd;"><?php echo $pb_h($r['gruppe']); ?></td>
-                <td style="padding:6px 8px;border:1px solid #ddd;" title="<?php echo $pb_h($r['beschreibung']); ?>"><?php echo $pb_h($r['stichwort']); ?></td>
-                <td style="padding:6px 8px;border:1px solid #ddd;text-align:right;"><?php echo $r['aufwand'] === null ? '–' : number_format($r['aufwand'], 2, ',', ''); ?></td>
-                <td style="padding:6px 8px;border:1px solid #ddd;text-align:right;"><?php echo $r['nutzen'] === null ? '–' : number_format($r['nutzen'], 2, ',', ''); ?></td>
-                <td style="padding:6px 8px;border:1px solid #ddd;text-align:right;font-weight:600;"><?php echo $r['diff'] === null ? '–' : number_format($r['diff'], 2, ',', ''); ?></td>
-                <td style="padding:6px 8px;border:1px solid #ddd;text-align:right;color:#666;"><?php echo max($r['anzahl_a'], $r['anzahl_n']); ?></td>
+                <td data-v="<?php echo $pb_h($r['item_id']); ?>" style="padding:6px 8px;border:1px solid #ddd;"><?php echo $pb_h($r['item_id']); ?></td>
+                <td data-v="<?php echo $pb_h($r['gruppe']); ?>" style="padding:6px 8px;border:1px solid #ddd;"><?php echo $pb_h($r['gruppe']); ?></td>
+                <td data-v="<?php echo $pb_h($r['stichwort']); ?>" style="padding:6px 8px;border:1px solid #ddd;" title="<?php echo $pb_h($r['beschreibung']); ?>"><?php echo $pb_h($r['stichwort']); ?></td>
+                <td data-v="<?php echo $r['aufwand'] === null ? '' : $r['aufwand']; ?>" style="padding:6px 8px;border:1px solid #ddd;text-align:right;"><?php echo $r['aufwand'] === null ? '–' : number_format($r['aufwand'], 2, ',', ''); ?></td>
+                <td data-v="<?php echo $r['nutzen'] === null ? '' : $r['nutzen']; ?>" style="padding:6px 8px;border:1px solid #ddd;text-align:right;"><?php echo $r['nutzen'] === null ? '–' : number_format($r['nutzen'], 2, ',', ''); ?></td>
+                <td data-v="<?php echo $r['diff'] === null ? '' : $r['diff']; ?>" style="padding:6px 8px;border:1px solid #ddd;text-align:right;font-weight:600;"><?php echo $r['diff'] === null ? '–' : number_format($r['diff'], 2, ',', ''); ?></td>
+                <td data-v="<?php echo max($r['anzahl_a'], $r['anzahl_n']); ?>" style="padding:6px 8px;border:1px solid #ddd;text-align:right;color:#666;"><?php echo max($r['anzahl_a'], $r['anzahl_n']); ?></td>
             </tr>
         <?php endforeach; ?>
         </tbody>
     </table>
     </div>
+    <script>
+    (function () {
+        var tab = document.getElementById('pb-ergebnis');
+        if (!tab) return;
+        var ths = tab.querySelectorAll('th'), tb = tab.tBodies[0];
+        var richtung = {};
+        richtung[5] = -1;   // Startzustand: Nutzen - Aufwand absteigend
+        ths.forEach(function (th) {
+            th.addEventListener('click', function () {
+                var col = parseInt(th.getAttribute('data-col'), 10), num = th.getAttribute('data-typ') === 'num';
+                var dir = (richtung[col] === 1) ? -1 : 1;
+                if (num && richtung[col] === undefined) dir = -1;   // Zahlen zuerst absteigend
+                richtung = {}; richtung[col] = dir;
+                var rows = Array.prototype.slice.call(tb.rows);
+                rows.sort(function (a, b) {
+                    var x = a.cells[col].getAttribute('data-v'), y = b.cells[col].getAttribute('data-v');
+                    if (num) {   // leere Werte immer ans Ende
+                        if (x === '' && y === '') return 0;
+                        if (x === '') return 1;
+                        if (y === '') return -1;
+                        return (parseFloat(x) - parseFloat(y)) * dir;
+                    }
+                    return x.localeCompare(y, 'de', {numeric: true, sensitivity: 'base'}) * dir;
+                });
+                rows.forEach(function (r) { tb.appendChild(r); });
+                ths.forEach(function (h) { h.querySelector('.pb-pfeil').textContent = ''; });
+                th.querySelector('.pb-pfeil').textContent = dir === 1 ? '▲' : '▼';
+            });
+        });
+    })();
+    </script>
 <?php else: ?>
     <?php
     $pb_meine = pb_meine_bewertungen($pdo, (int)$current_user['member_id']);

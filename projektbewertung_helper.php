@@ -175,7 +175,7 @@ function pb_csv(PDO $pdo): string {
     fwrite($f, "\xEF\xBB\xBF");
     $kopf = ['ID', 'Gruppe', 'Stichwort'];
     foreach ($pseudo as $mid => $p) { $kopf[] = $p . ' Aufwand'; $kopf[] = $p . ' Nutzen'; }
-    fputcsv($f, $kopf, ';');
+    fputcsv($f, $kopf, ';', '"', '');
     foreach ($items as $it) {
         $z = [$it['item_id'], $it['gruppe'], $it['stichwort']];
         foreach ($pseudo as $mid => $p) {
@@ -183,7 +183,7 @@ function pb_csv(PDO $pdo): string {
             $z[] = $w[0] === null ? '' : $w[0];
             $z[] = $w[1] === null ? '' : $w[1];
         }
-        fputcsv($f, $z, ';');
+        fputcsv($f, $z, ';', '"', '');
     }
     rewind($f);
     $csv = stream_get_contents($f);
@@ -256,7 +256,7 @@ function pb_csv_lesen(string $datei): array {
     $delim = (substr_count($first, ';') >= substr_count($first, ',')) ? ';' : ',';
     $f = fopen('php://temp', 'w+'); fwrite($f, $txt); rewind($f);
     $rows = [];
-    while (($r = fgetcsv($f, 0, $delim)) !== false) { if ($r !== [null]) $rows[] = $r; }
+    while (($r = fgetcsv($f, 0, $delim, '"', '')) !== false) { if ($r !== [null]) $rows[] = $r; }
     fclose($f);
     return $rows;
 }
