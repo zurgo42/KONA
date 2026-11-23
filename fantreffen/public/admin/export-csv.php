@@ -71,7 +71,7 @@ echo "\xEF\xBB\xBF";
 $output = fopen('php://output', 'w');
 
 // Kopfzeile
-fputcsv($output, ['Vorname', 'Nachname', 'Nickname', 'Mobil', 'Kabine', 'E-Mail', 'Bemerkung'], ';');
+fputcsv($output, ['Vorname', 'Nachname', 'Nickname', 'Mobil', 'Kabine', 'E-Mail', 'Bemerkung'], ';', '"', '');
 
 // Daten
 foreach ($teilnehmer as $t) {
@@ -83,7 +83,7 @@ foreach ($teilnehmer as $t) {
         $t['kabine'] ?? '',
         $t['email'],
         $t['bemerkung'] ?? ''
-    ], ';');
+    ], ';', '"', '');
 }
 
 fclose($output);
