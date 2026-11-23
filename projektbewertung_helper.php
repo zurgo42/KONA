@@ -6,11 +6,12 @@
  * - Bis zum Stichtag: Eingabemaske; danach: Ergebnistabelle (Mittelwerte, Nutzen minus Aufwand, sortiert)
  * - Import der Projektliste aus Excel (.xlsx) oder CSV
  *
- * Konfiguration (optional in config.php vor dem Laden definieren):
- *   PB_RUNDE            aktuelle Runde (Standard 1; Januar-Runde: 2)
- *   PB_STICHTAG         letzter Eingabetag dieser Runde, 'YYYY-MM-DD' (Standard 2026-12-04)
- *   PB_FREIGABE_ALLE    true = für alle mit aktiv > PB_MIN_AKTIV sichtbar (Standard false = nur Testpersonen)
- *   PB_MIN_AKTIV        Mindestwert aktiv (Standard 11, also aktiv > 11)
+ * Einstellungen (hier direkt änderbar):
+ *   PB_RUNDE            aktuelle Runde (1; Januar-Runde: 2)
+ *   PB_STICHTAG         letzter Eingabetag dieser Runde, 'YYYY-MM-DD'
+ *   PB_FREIGABE_ALLE    true = für alle mit aktiv > PB_MIN_AKTIV sichtbar, false = nur Testpersonen
+ *   PB_MIN_AKTIV        Mindestwert aktiv (11 = aktiv > 11)
+ *   PB_TESTPERSONEN     Mitgliedsnummern der Testpersonen/Verantwortlichen (Import, CSV)
  */
 if (!defined('PB_RUNDE'))         define('PB_RUNDE', 1);
 if (!defined('PB_STICHTAG'))      define('PB_STICHTAG', '2026-12-04');

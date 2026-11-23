@@ -51,6 +51,7 @@ $pb_items = pb_items($pdo);
         &nbsp;·&nbsp; <span style="color:#666;">Runde <?php echo (int)PB_RUNDE; ?>, Eingabe bis <?php echo $pb_h(pb_stichtag_text()); ?>
         <?php echo PB_FREIGABE_ALLE ? '(für alle mit aktiv &gt; ' . (int)PB_MIN_AKTIV . ' freigeschaltet)' : '(Testphase: nur Testpersonen)'; ?></span>
     </p>
+    <p style="margin:6px 0 0 0;color:#666;font-size:13px;">Einstellungen (Runde, Stichtag, Freigabe): in <code>projektbewertung_helper.php</code></p>
 </details>
 <?php endif; ?>
 
