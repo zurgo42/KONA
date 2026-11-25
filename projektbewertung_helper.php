@@ -45,6 +45,9 @@ function pb_tabellen_sicherstellen(PDO $pdo): void {
         updated_at VARCHAR(19)  NULL,
         PRIMARY KEY (runde, item_id, member_id)
     )$ext");
+    // Verfasser bei ergänzten Vorschlägen (nachträglich hinzugefügte Spalte)
+    try { $pdo->query("SELECT erstellt_von FROM svprojekt_items LIMIT 1"); }
+    catch (Throwable $e) { $pdo->exec("ALTER TABLE svprojekt_items ADD COLUMN erstellt_von INT NULL"); }
     $done = true;
 }
 
@@ -70,7 +73,28 @@ function pb_eingabe_offen(?int $jetzt = null): bool {
 function pb_stichtag_text(): string { return date('d.m.Y', strtotime(PB_STICHTAG)); }
 
 function pb_items(PDO $pdo): array {
-    return $pdo->query("SELECT * FROM svprojekt_items ORDER BY sortierung, item_id")->fetchAll(PDO::FETCH_ASSOC);
+    $items = $pdo->query("SELECT * FROM svprojekt_items ORDER BY sortierung, item_id")->fetchAll(PDO::FETCH_ASSOC);
+    $namen = [];
+    foreach ($items as &$it) {
+        $it['verfasser'] = '';
+        $mid = (int)($it['erstellt_von'] ?? 0);
+        if ($mid > 0 && function_exists('get_member_by_id')) {
+            if (!isset($namen[$mid])) {
+                $m = get_member_by_id($pdo, $mid);
+                $namen[$mid] = $m ? trim(($m['first_name'] ?? '') . ' ' . ($m['last_name'] ?? '')) : '';
+            }
+            $it['verfasser'] = $namen[$mid];
+        }
+    }
+    unset($it);
+    return $items;
+}
+
+/** Darf der Nutzer diesen ergänzten Vorschlag ändern/löschen? Verfasser bis zum Stichtag, Verantwortliche jederzeit. */
+function pb_darf_vorschlag_aendern(array $item, array $user): bool {
+    if (($item['gruppe'] ?? '') !== PB_GRUPPE_VORSCHLAG) return false;
+    if (pb_zugriff($user)['admin']) return true;
+    return pb_eingabe_offen() && (int)($item['erstellt_von'] ?? 0) > 0 && (int)$item['erstellt_von'] === (int)($user['member_id'] ?? 0);
 }
 
 function pb_meine_bewertungen(PDO $pdo, int $member_id): array {
@@ -86,7 +110,7 @@ function pb_meine_bewertungen(PDO $pdo, int $member_id): array {
  * Sie erscheinen danach für alle in der Gruppe PB_GRUPPE_VORSCHLAG und können wie die übrigen Projekte bewertet werden.
  * Liefert die Anzahl neu angelegter Vorschläge.
  */
-function pb_vorschlaege_speichern(PDO $pdo, array $post): int {
+function pb_vorschlaege_speichern(PDO $pdo, array $post, int $member_id = 0): int {
     $titel = (array)($post['neu_titel'] ?? []);
     $beschr = (array)($post['neu_beschr'] ?? []);
     $neu = 0;
@@ -94,7 +118,7 @@ function pb_vorschlaege_speichern(PDO $pdo, array $post): int {
     $nr = 0;
     foreach ($max as $id) $nr = max($nr, (int)substr($id, 2));
     $dup = $pdo->prepare("SELECT COUNT(*) FROM svprojekt_items WHERE gruppe = ? AND stichwort = ?");
-    $ins = $pdo->prepare("INSERT INTO svprojekt_items (item_id, gruppe, stichwort, beschreibung, sortierung) VALUES (?,?,?,?,?)");
+    $ins = $pdo->prepare("INSERT INTO svprojekt_items (item_id, gruppe, stichwort, beschreibung, sortierung, erstellt_von) VALUES (?,?,?,?,?,?)");
     foreach (array_slice($titel, 0, 10, true) as $i => $t) {
         $t = trim((string)$t);
         $b = trim((string)($beschr[$i] ?? ''));
@@ -104,10 +128,38 @@ function pb_vorschlaege_speichern(PDO $pdo, array $post): int {
         $dup->execute([PB_GRUPPE_VORSCHLAG, $t]);
         if ($dup->fetchColumn() > 0) continue;         // gleiche Überschrift gibt es schon (z. B. Doppelklick)
         $nr++;
-        $ins->execute(['W-' . $nr, PB_GRUPPE_VORSCHLAG, $t, $b, 100000 + $nr]);
+        $ins->execute(['W-' . $nr, PB_GRUPPE_VORSCHLAG, $t, $b, 100000 + $nr, $member_id > 0 ? $member_id : null]);
         $neu++;
     }
     return $neu;
+}
+
+/** Vorschläge ändern oder löschen (Verfasser bzw. Verantwortliche). Liefert [geändert, gelöscht] */
+function pb_vorschlaege_aendern(PDO $pdo, array $post, array $user): array {
+    $geaendert = 0; $geloescht = 0;
+    $sel = $pdo->prepare("SELECT * FROM svprojekt_items WHERE item_id = ?");
+    $upd = $pdo->prepare("UPDATE svprojekt_items SET stichwort = ?, beschreibung = ? WHERE item_id = ?");
+    $delr = $pdo->prepare("DELETE FROM svprojekt_ratings WHERE item_id = ?");
+    $deli = $pdo->prepare("DELETE FROM svprojekt_items WHERE item_id = ?");
+    $ids = array_unique(array_merge(array_keys((array)($post['edit_titel'] ?? [])), array_keys((array)($post['loeschen'] ?? []))));
+    foreach ($ids as $iid) {
+        $iid = (string)$iid;
+        $sel->execute([$iid]);
+        $item = $sel->fetch(PDO::FETCH_ASSOC);
+        if (!$item || !pb_darf_vorschlag_aendern($item, $user)) continue;
+        if (!empty($post['loeschen'][$iid])) {
+            $delr->execute([$iid]);
+            $deli->execute([$iid]);
+            $geloescht++;
+            continue;
+        }
+        $t = mb_substr(trim((string)($post['edit_titel'][$iid] ?? '')), 0, 300);
+        $b = mb_substr(trim((string)($post['edit_beschr'][$iid] ?? '')), 0, 4000);
+        if ($t === '' || ($t === $item['stichwort'] && $b === (string)$item['beschreibung'])) continue;   // leer oder unverändert
+        $upd->execute([$t, $b, $iid]);
+        $geaendert++;
+    }
+    return [$geaendert, $geloescht];
 }
 
 /** Eigene Bewertungen speichern. Leere Zeilen werden nicht gewertet (und entfernt). Liefert [gespeichert, gelöscht] */

@@ -23,7 +23,7 @@ $pb_items = pb_items($pdo);
 <h2>📊 Projekte bewerten: Aufwand und Nutzen</h2>
 
 <?php if ($pb_msg === 'pb_gespeichert'): ?>
-    <div class="message">✅ Deine Bewertung wurde gespeichert (<?php echo (int)($_GET['n'] ?? 0); ?> Projekte bewertet<?php echo (int)($_GET['v'] ?? 0) > 0 ? ', ' . (int)$_GET['v'] . ' neue(r) Vorschlag/Vorschläge angelegt' : ''; ?>). Du kannst sie bis zum <?php echo $pb_h(pb_stichtag_text()); ?> jederzeit ändern.</div>
+    <div class="message">✅ Deine Bewertung wurde gespeichert (<?php echo (int)($_GET['n'] ?? 0); ?> Projekte bewertet<?php echo (int)($_GET['v'] ?? 0) > 0 ? ', ' . (int)$_GET['v'] . ' neue(r) Vorschlag/Vorschläge angelegt' : ''; ?><?php echo (int)($_GET['ae'] ?? 0) > 0 ? ', ' . (int)$_GET['ae'] . ' Vorschlag/Vorschläge geändert' : ''; ?><?php echo (int)($_GET['lo'] ?? 0) > 0 ? ', ' . (int)$_GET['lo'] . ' Vorschlag/Vorschläge gelöscht' : ''; ?>). Du kannst sie bis zum <?php echo $pb_h(pb_stichtag_text()); ?> jederzeit ändern.</div>
 <?php elseif ($pb_msg === 'pb_geschlossen'): ?>
     <div class="error">Die Eingabephase ist beendet, es können keine Bewertungen mehr gespeichert werden.</div>
 <?php elseif ($pb_msg === 'pb_fehler'): ?>
@@ -99,7 +99,7 @@ $pb_items = pb_items($pdo);
             <tr>
                 <td data-v="<?php echo $pb_h($r['item_id']); ?>" style="padding:6px 8px;border:1px solid #ddd;"><?php echo $pb_h($r['item_id']); ?></td>
                 <td data-v="<?php echo $pb_h($r['gruppe']); ?>" style="padding:6px 8px;border:1px solid #ddd;"><?php echo $pb_h($r['gruppe']); ?></td>
-                <td data-v="<?php echo $pb_h($r['stichwort']); ?>" style="padding:6px 8px;border:1px solid #ddd;" title="<?php echo $pb_h($r['beschreibung']); ?>"><?php echo $pb_h($r['stichwort']); ?></td>
+                <td data-v="<?php echo $pb_h($r['stichwort']); ?>" style="padding:6px 8px;border:1px solid #ddd;" title="<?php echo $pb_h($r['beschreibung']); ?>"><?php echo $pb_h($r['stichwort']); ?><?php if ($r['gruppe'] === PB_GRUPPE_VORSCHLAG): ?> <span style="color:#888;font-size:12px;">(Vorschlag von <?php echo $pb_h($r['verfasser'] !== '' ? $r['verfasser'] : 'unbekannt'); ?>)</span><?php endif; ?></td>
                 <td data-v="<?php echo $r['aufwand'] === null ? '' : $r['aufwand']; ?>" style="padding:6px 8px;border:1px solid #ddd;text-align:right;"><?php echo $r['aufwand'] === null ? '–' : number_format($r['aufwand'], 2, ',', ''); ?></td>
                 <td data-v="<?php echo $r['nutzen'] === null ? '' : $r['nutzen']; ?>" style="padding:6px 8px;border:1px solid #ddd;text-align:right;"><?php echo $r['nutzen'] === null ? '–' : number_format($r['nutzen'], 2, ',', ''); ?></td>
                 <td data-v="<?php echo $r['diff'] === null ? '' : $r['diff']; ?>" style="padding:6px 8px;border:1px solid #ddd;text-align:right;font-weight:600;"><?php echo $r['diff'] === null ? '–' : number_format($r['diff'], 2, ',', ''); ?></td>
@@ -149,7 +149,7 @@ $pb_items = pb_items($pdo);
         <?php echo $pb_h(PB_EINFUEHRUNG); ?>
         <br><small style="color:#555;">Skala 1 bis 7: Aufwand 1 = sehr gering … 7 = sehr hoch; Nutzen 1 = sehr gering … 7 = sehr hoch. Felder, die du leer lässt, werden nicht gewertet. Du kannst deine Eingaben bis zum <?php echo $pb_h(pb_stichtag_text()); ?> beliebig oft ändern.</small>
     </div>
-    <form method="POST" action="?tab=projekte">
+    <form method="POST" action="?tab=projekte" onsubmit="if (document.querySelector('.pb-loeschen:checked') && !confirm('Die markierten Vorschläge werden samt allen Bewertungen endgültig gelöscht. Fortfahren?')) return false;">
         <?php
         $pb_opt = function ($sel) {
             $o = '<option value="">–</option>';
@@ -175,8 +175,15 @@ $pb_items = pb_items($pdo);
                 <tr>
                     <td style="padding:6px 8px;border:1px solid #ddd;vertical-align:top;white-space:nowrap;"><?php echo $pb_h($it['item_id']); ?></td>
                     <td style="padding:6px 8px;border:1px solid #ddd;vertical-align:top;">
-                        <strong><?php echo $pb_h($it['stichwort']); ?></strong>
-                        <?php if ($it['beschreibung'] !== ''): ?><div style="color:#555;font-size:13px;"><?php echo nl2br($pb_h($it['beschreibung'])); ?></div><?php endif; ?>
+                        <?php if (pb_darf_vorschlag_aendern($it, $current_user)): ?>
+                            <input type="text" name="edit_titel[<?php echo $pb_h($it['item_id']); ?>]" value="<?php echo $pb_h($it['stichwort']); ?>" maxlength="300" style="width:100%;font-weight:600;padding:4px;border:1px solid #ccc;border-radius:4px;">
+                            <textarea name="edit_beschr[<?php echo $pb_h($it['item_id']); ?>]" rows="2" style="width:100%;margin-top:4px;padding:4px;border:1px solid #ccc;border-radius:4px;"><?php echo $pb_h($it['beschreibung']); ?></textarea>
+                            <label style="font-size:13px;color:#b71c1c;cursor:pointer;"><input type="checkbox" class="pb-loeschen" name="loeschen[<?php echo $pb_h($it['item_id']); ?>]" value="1"> Vorschlag löschen (mit allen Bewertungen dazu)</label>
+                        <?php else: ?>
+                            <strong><?php echo $pb_h($it['stichwort']); ?></strong>
+                            <?php if ($it['beschreibung'] !== ''): ?><div style="color:#555;font-size:13px;"><?php echo nl2br($pb_h($it['beschreibung'])); ?></div><?php endif; ?>
+                        <?php endif; ?>
+                        <?php if ($it['gruppe'] === PB_GRUPPE_VORSCHLAG): ?><div style="color:#888;font-size:12px;margin-top:2px;">Vorschlag von <?php echo $pb_h($it['verfasser'] !== '' ? $it['verfasser'] : 'unbekannt'); ?></div><?php endif; ?>
                     </td>
                     <td style="padding:6px 8px;border:1px solid #ddd;vertical-align:top;"><select name="aufwand[<?php echo $pb_h($it['item_id']); ?>]"><?php echo $pb_opt($m['aufwand']); ?></select></td>
                     <td style="padding:6px 8px;border:1px solid #ddd;vertical-align:top;"><select name="nutzen[<?php echo $pb_h($it['item_id']); ?>]"><?php echo $pb_opt($m['nutzen']); ?></select></td>
