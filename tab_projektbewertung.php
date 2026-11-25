@@ -23,7 +23,7 @@ $pb_items = pb_items($pdo);
 <h2>📊 Projekte bewerten: Aufwand und Nutzen</h2>
 
 <?php if ($pb_msg === 'pb_gespeichert'): ?>
-    <div class="message">✅ Deine Bewertung wurde gespeichert (<?php echo (int)($_GET['n'] ?? 0); ?> Projekte bewertet). Du kannst sie bis zum <?php echo $pb_h(pb_stichtag_text()); ?> jederzeit ändern.</div>
+    <div class="message">✅ Deine Bewertung wurde gespeichert (<?php echo (int)($_GET['n'] ?? 0); ?> Projekte bewertet<?php echo (int)($_GET['v'] ?? 0) > 0 ? ', ' . (int)$_GET['v'] . ' neue(r) Vorschlag/Vorschläge angelegt' : ''; ?>). Du kannst sie bis zum <?php echo $pb_h(pb_stichtag_text()); ?> jederzeit ändern.</div>
 <?php elseif ($pb_msg === 'pb_geschlossen'): ?>
     <div class="error">Die Eingabephase ist beendet, es können keine Bewertungen mehr gespeichert werden.</div>
 <?php elseif ($pb_msg === 'pb_fehler'): ?>
@@ -183,6 +183,19 @@ $pb_items = pb_items($pdo);
                     <td style="padding:6px 8px;border:1px solid #ddd;vertical-align:top;"><textarea name="kommentar[<?php echo $pb_h($it['item_id']); ?>]" rows="2" style="width:100%;min-width:200px;"><?php echo $pb_h($m['kommentar']); ?></textarea></td>
                 </tr>
             <?php endforeach; ?>
+            <?php if ($pb_gruppe !== PB_GRUPPE_VORSCHLAG): ?>
+                <tr><td colspan="5" style="padding:8px;background:#667eea;color:#fff;font-weight:600;border:1px solid #667eea;"><?php echo $pb_h(PB_GRUPPE_VORSCHLAG); ?></td></tr>
+            <?php endif; ?>
+                <tr><td colspan="5" style="padding:10px;background:#f4f6ff;border:1px solid #ddd;">
+                    <strong>➕ Weitere Vorschläge hinzufügen</strong>
+                    <div style="color:#555;font-size:13px;margin:2px 0 8px 0;">Fehlt ein Projekt? Überschrift und Beschreibung eintragen und unten speichern. Der Vorschlag erscheint danach für alle in dieser Liste und kann bewertet werden. Leere Felder werden nicht gespeichert.</div>
+                    <?php for ($k = 0; $k < 3; $k++): ?>
+                        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
+                            <input type="text" name="neu_titel[]" maxlength="300" placeholder="Überschrift" style="flex:1;min-width:200px;padding:6px;border:1px solid #ccc;border-radius:4px;">
+                            <textarea name="neu_beschr[]" rows="2" placeholder="Beschreibung" style="flex:2;min-width:240px;padding:6px;border:1px solid #ccc;border-radius:4px;"></textarea>
+                        </div>
+                    <?php endfor; ?>
+                </td></tr>
             </tbody>
         </table>
         </div>

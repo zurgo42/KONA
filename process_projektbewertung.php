@@ -27,8 +27,9 @@ if (isset($_POST['pb_speichern'])) {
         exit;
     }
     try {
+        $v = pb_vorschlaege_speichern($pdo, $_POST);
         [$n, $d] = pb_bewertungen_speichern($pdo, (int)$current_user['member_id'], $_POST);
-        header('Location: ' . $pb_redirect . '&msg=pb_gespeichert&n=' . $n);
+        header('Location: ' . $pb_redirect . '&msg=pb_gespeichert&n=' . $n . '&v=' . $v);
     } catch (Throwable $e) {
         error_log('Projektbewertung speichern: ' . $e->getMessage());
         header('Location: ' . $pb_redirect . '&msg=pb_fehler');

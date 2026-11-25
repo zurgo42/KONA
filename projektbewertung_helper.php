@@ -19,6 +19,7 @@ if (!defined('PB_FREIGABE_ALLE')) define('PB_FREIGABE_ALLE', false);
 if (!defined('PB_MIN_AKTIV'))     define('PB_MIN_AKTIV', 11);
 if (!defined('PB_TESTPERSONEN'))  define('PB_TESTPERSONEN', '0495018,0493993,049635');   // Testphase + Export/Import
 
+const PB_GRUPPE_VORSCHLAG = 'Weitere Vorschläge';   // Gruppe der von Teilnehmern ergänzten Projekte (ID W-1, W-2 ...)
 const PB_EINFUEHRUNG = 'Wie im Führungteam-Treffen besprochen wollen wir die von der Gruppe Vereinsentwicklung aufgenommenen Projekte nach Aufwand und Nutzen bewerten. Besprochen ist, dass es jetzt eine erste Einschätzung gibt und dann im Januar eine weitere Runde. Ausfüllbar ist das für diese erste Phase also bis zum 4. Dezember.';
 
 /** Tabellen anlegen (falls noch nicht vorhanden) */
@@ -78,6 +79,35 @@ function pb_meine_bewertungen(PDO $pdo, int $member_id): array {
     $out = [];
     foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) $out[$r['item_id']] = $r;
     return $out;
+}
+
+/**
+ * Neue Projektvorschläge von Teilnehmern speichern (Überschrift + Beschreibung).
+ * Sie erscheinen danach für alle in der Gruppe PB_GRUPPE_VORSCHLAG und können wie die übrigen Projekte bewertet werden.
+ * Liefert die Anzahl neu angelegter Vorschläge.
+ */
+function pb_vorschlaege_speichern(PDO $pdo, array $post): int {
+    $titel = (array)($post['neu_titel'] ?? []);
+    $beschr = (array)($post['neu_beschr'] ?? []);
+    $neu = 0;
+    $max = $pdo->query("SELECT item_id FROM svprojekt_items WHERE item_id LIKE 'W-%'")->fetchAll(PDO::FETCH_COLUMN);
+    $nr = 0;
+    foreach ($max as $id) $nr = max($nr, (int)substr($id, 2));
+    $dup = $pdo->prepare("SELECT COUNT(*) FROM svprojekt_items WHERE gruppe = ? AND stichwort = ?");
+    $ins = $pdo->prepare("INSERT INTO svprojekt_items (item_id, gruppe, stichwort, beschreibung, sortierung) VALUES (?,?,?,?,?)");
+    foreach (array_slice($titel, 0, 10, true) as $i => $t) {
+        $t = trim((string)$t);
+        $b = trim((string)($beschr[$i] ?? ''));
+        if ($t === '') continue;                       // ohne Überschrift wird nichts angelegt
+        $t = mb_substr($t, 0, 300);
+        $b = mb_substr($b, 0, 4000);
+        $dup->execute([PB_GRUPPE_VORSCHLAG, $t]);
+        if ($dup->fetchColumn() > 0) continue;         // gleiche Überschrift gibt es schon (z. B. Doppelklick)
+        $nr++;
+        $ins->execute(['W-' . $nr, PB_GRUPPE_VORSCHLAG, $t, $b, 100000 + $nr]);
+        $neu++;
+    }
+    return $neu;
 }
 
 /** Eigene Bewertungen speichern. Leere Zeilen werden nicht gewertet (und entfernt). Liefert [gespeichert, gelöscht] */
