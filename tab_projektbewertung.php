@@ -195,13 +195,11 @@ $pb_items = pb_items($pdo);
             <?php endif; ?>
                 <tr><td colspan="5" style="padding:10px;background:#f4f6ff;border:1px solid #ddd;">
                     <strong>➕ Weitere Vorschläge hinzufügen</strong>
-                    <div style="color:#555;font-size:13px;margin:2px 0 8px 0;">Fehlt ein Projekt? Überschrift und Beschreibung eintragen und unten speichern. Der Vorschlag erscheint danach für alle in dieser Liste und kann bewertet werden. Leere Felder werden nicht gespeichert.</div>
-                    <?php for ($k = 0; $k < 3; $k++): ?>
-                        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
-                            <input type="text" name="neu_titel[]" maxlength="300" placeholder="Überschrift" style="flex:1;min-width:200px;padding:6px;border:1px solid #ccc;border-radius:4px;">
-                            <textarea name="neu_beschr[]" rows="2" placeholder="Beschreibung" style="flex:2;min-width:240px;padding:6px;border:1px solid #ccc;border-radius:4px;"></textarea>
-                        </div>
-                    <?php endfor; ?>
+                    <div style="color:#555;font-size:13px;margin:2px 0 8px 0;">Fehlt ein Projekt? Überschrift und Beschreibung eintragen und unten speichern. Der Vorschlag erscheint danach für alle in dieser Liste und kann bewertet werden. Weitere Vorschläge können nacheinander eingetragen werden: nach dem Speichern steht das Feld wieder leer bereit.</div>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                        <input type="text" name="neu_titel[]" maxlength="300" placeholder="Überschrift" style="flex:1;min-width:200px;padding:6px;border:1px solid #ccc;border-radius:4px;">
+                        <textarea name="neu_beschr[]" rows="2" placeholder="Beschreibung" style="flex:2;min-width:240px;padding:6px;border:1px solid #ccc;border-radius:4px;"></textarea>
+                    </div>
                 </td></tr>
             </tbody>
         </table>
