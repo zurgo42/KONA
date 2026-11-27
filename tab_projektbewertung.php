@@ -29,7 +29,8 @@ $pb_sortjs = function (string $id, ?int $startCol) {
         if (!tab) return;
         var ths = tab.querySelectorAll('th'), tb = tab.tBodies[0];
         var richtung = {};
-        <?php if ($startCol !== null): ?>richtung[<?php echo (int)$startCol; ?>] = -1;   // Startzustand: absteigend nach dieser Spalte<?php endif; ?>
+        <?php if ($startCol !== null) { echo 'richtung[' . (int)$startCol . '] = -1;'; } ?>
+
         ths.forEach(function (th) {
             th.addEventListener('click', function () {
                 var col = parseInt(th.getAttribute('data-col'), 10), num = th.getAttribute('data-typ') === 'num';
