@@ -45,6 +45,12 @@ function pb_tabellen_sicherstellen(PDO $pdo): void {
         updated_at VARCHAR(19)  NULL,
         PRIMARY KEY (runde, item_id, member_id)
     )$ext");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS svprojekt_pseudo (
+        runde     INT NOT NULL,
+        member_id INT NOT NULL,
+        nr        INT NOT NULL,
+        PRIMARY KEY (runde, member_id)
+    )$ext");
     // Verfasser bei ergänzten Vorschlägen (nachträglich hinzugefügte Spalte)
     try { $pdo->query("SELECT erstellt_von FROM svprojekt_items LIMIT 1"); }
     catch (Throwable $e) { $pdo->exec("ALTER TABLE svprojekt_items ADD COLUMN erstellt_von INT NULL"); }
@@ -217,15 +223,27 @@ function pb_auswertung(PDO $pdo): array {
     return $items;
 }
 
-/** Bewerter-Pseudonyme P01, P02 ... (Reihenfolge nicht an Mitgliedsnummer/-id gekoppelt) */
-function pb_pseudonyme(array $member_ids): array {
+/**
+ * Bewerter-Kürzel P01, P02 ... Die Zuordnung wird dauerhaft gespeichert (je Runde): Wer ein Kürzel hat, behält es,
+ * auch wenn später weitere Personen bewerten. Neue Personen bekommen die nächsten Nummern in zufälliger Reihenfolge,
+ * sodass das Kürzel nicht verrät, wer zuerst bewertet hat.
+ */
+function pb_pseudonyme(PDO $pdo, array $member_ids): array {
     $ids = array_values(array_unique(array_map('intval', $member_ids)));
-    sort($ids);
-    mt_srand(crc32('pb' . PB_RUNDE . count($ids)));
-    shuffle($ids);
-    $pseudo = [];
-    foreach ($ids as $i => $mid) $pseudo[$mid] = sprintf('P%02d', $i + 1);
-    return $pseudo;
+    $st = $pdo->prepare("SELECT member_id, nr FROM svprojekt_pseudo WHERE runde = ?");
+    $st->execute([PB_RUNDE]);
+    $nr = [];
+    $max = 0;
+    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) { $nr[(int)$r['member_id']] = (int)$r['nr']; $max = max($max, (int)$r['nr']); }
+    $neu = array_values(array_diff($ids, array_keys($nr)));
+    shuffle($neu);
+    if ($neu) {
+        $ins = $pdo->prepare("INSERT INTO svprojekt_pseudo (runde, member_id, nr) VALUES (?,?,?)");
+        foreach ($neu as $mid) { $max++; $ins->execute([PB_RUNDE, $mid, $max]); $nr[$mid] = $max; }
+    }
+    $out = [];
+    foreach ($ids as $mid) $out[$mid] = sprintf('P%02d', $nr[$mid]);
+    return $out;
 }
 
 /** Alle Einzelbewertungen der Runde als Liste (mit Kommentaren, ohne Mitgliedsangaben), sortiert nach Projekt und Bewerter-Kürzel */
@@ -235,7 +253,7 @@ function pb_einzeldaten(PDO $pdo): array {
                          WHERE r.runde = ?");
     $st->execute([PB_RUNDE]);
     $rows = $st->fetchAll(PDO::FETCH_ASSOC);
-    $pseudo = pb_pseudonyme(array_column($rows, 'member_id'));
+    $pseudo = pb_pseudonyme($pdo, array_column($rows, 'member_id'));
     foreach ($rows as &$r) { $r['bewerter'] = $pseudo[(int)$r['member_id']]; unset($r['member_id']); }
     unset($r);
     usort($rows, function ($a, $b) {
@@ -250,7 +268,7 @@ function pb_csv(PDO $pdo): string {
     $st = $pdo->prepare("SELECT item_id, member_id, aufwand, nutzen FROM svprojekt_ratings WHERE runde = ?");
     $st->execute([PB_RUNDE]);
     $rows = $st->fetchAll(PDO::FETCH_ASSOC);
-    $pseudo = pb_pseudonyme(array_column($rows, 'member_id'));
+    $pseudo = pb_pseudonyme($pdo, array_column($rows, 'member_id'));
     asort($pseudo);   // P01, P02, ... in Spaltenreihenfolge
     $werte = [];
     foreach ($rows as $r) $werte[$r['item_id']][(int)$r['member_id']] = [$r['aufwand'], $r['nutzen']];
